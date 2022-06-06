@@ -1,0 +1,296 @@
+[
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/main.o",
+      "main.c"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/main.c",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/main.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/page_tables.o",
+      "page_tables.c"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/page_tables.c",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/page_tables.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/rvh_test.o",
+      "rvh_test.c"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/rvh_test.c",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/rvh_test.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/interrupt_tests.o",
+      "interrupt_tests.c"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/interrupt_tests.c",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/interrupt_tests.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/translation_tests.o",
+      "translation_tests.c"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/translation_tests.c",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/translation_tests.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/test_register.o",
+      "test_register.c"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/test_register.c",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/test_register.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/virtual_instruction.o",
+      "virtual_instruction.c"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/virtual_instruction.c",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/virtual_instruction.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/hfence_tests.o",
+      "hfence_tests.c"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/hfence_tests.c",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/hfence_tests.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/wfi_tests.o",
+      "wfi_tests.c"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/wfi_tests.c",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/wfi_tests.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/tinst_tests.o",
+      "tinst_tests.c"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/tinst_tests.c",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/tinst_tests.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/platform/cva6/8250_uart.o",
+      "platform/cva6/8250_uart.c"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/platform/cva6/8250_uart.c",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/platform/cva6/8250_uart.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/platform/cva6/retarget_qemu.o",
+      "platform/cva6/retarget_qemu.c"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/platform/cva6/retarget_qemu.c",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/platform/cva6/retarget_qemu.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/boot.o",
+      "boot.S"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/boot.S",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/boot.o"
+  },
+  {
+    "arguments": [
+      "/home/guerra/dev/risc-v/bin/riscv64-unknown-elf-gcc",
+      "-D",
+      "LOG_LEVEL=LOG_DEBUG",
+      "-march=rv64imac",
+      "-mabi=lp64",
+      "-g3",
+      "-mcmodel=medany",
+      "-O3",
+      "-I./inc",
+      "-Iplatform/cva6/inc",
+      "-c",
+      "-o",
+      "build/cva6/handlers.o",
+      "handlers.S"
+    ],
+    "directory": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests",
+    "file": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/handlers.S",
+    "output": "/home/guerra/universidade/esrg/pi/riscv-hyp-tests/build/cva6/handlers.o"
+  }
+]
