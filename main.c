@@ -11,7 +11,26 @@
 #define STORE_EVENT 9
 #define LOAD_EVENT 8
 
-#define IOPMP_CTL 0x50000000
+// IOPMP global defines
+#define NR_MEMORY_DOMAINS_MAX   63
+#define NR_ENTRIES_MAX          32
+
+// implementation specific
+#define NR_ENTRIES_PER_MD 8
+#define NR_MD 2
+
+#define MDCFG_OFFSET         4 * (NR_MEMORY_DOMAINS_MAX)
+#define ENTRY_ADDR_OFFSET    MDCFG_OFFSET + (8 *  (NR_ENTRIES_MAX+1))
+// #define ENTRY_CFG_OFFSET     ENTRY_ADDR_OFFSET + 4 *  (NR_ENTRIES_MAX)
+
+#define IOPMP_BASE_ADDR       0x50000000
+#define IOPMP_CTL_OFF         0x0
+#define IOPMP_RCD_OFF         0x4
+#define IOPMP_MDMASK_OFF      0x10
+#define IOPMP_MDLCK_OFF       0x18
+#define IOPMP_MDCFG_OFF       0x100
+#define IOPMP_ENTRY_ADDR_OFF  (0x104 + MDCFG_OFFSET)
+#define IOPMP_ENTRY_CFG_OFF   (0x10c + ENTRY_ADDR_OFFSET)
 
 static inline void touchread(uintptr_t addr) {
   asm volatile("" ::: "memory");
@@ -49,34 +68,109 @@ bool hpm_tests() {
   TEST_END();
 }
 bool iopmp_tests() {
-  //uintptr_t ptr = 0x81000000;
   TEST_START();
-  sw(IOPMP_CTL, 0xffffffff);
-  //touchwrite(ptr);
-  bool cond_ctl = (lw(IOPMP_CTL) == 0xc0000001);
-  TEST_ASSERT("When iopmp_ctl == 0xc0000001, ", cond_ctl);
+  //  Test the control register (iopmp_ctl): 32 bits
+  //  Status: validated
+  /*  Register format:
+      .------.----.-------.----------.----.
+      | -    | L  | RCALL | reserved | EN |
+      :------+----+-------+----------+----:
+      | bits | 31 | 30    | 29-1     | 0  |
+      '------'----'-------'----------'----'
+  */
+  sw(IOPMP_BASE_ADDR+IOPMP_CTL_OFF, 0xffffffff);
+  bool cond_ctl = (lw(IOPMP_BASE_ADDR+IOPMP_CTL_OFF) == 0xc0000001);
+  TEST_ASSERT("[w/r] iopmp_ctl value: 0xc0000001, ", cond_ctl);
+
+  //  Test the memory domain mask.
+  //  Status: validated
+  /*  Register format:
+      .------.----.------.
+      | -    | L  | MDs  |
+      :------+----+------:
+      | bits | 63 | 62-0 |
+      '------'----'------'
+  */
+  sd(IOPMP_BASE_ADDR+IOPMP_MDMASK_OFF, 0x8000000000010001);
+  bool cond_mdmask = (ld(IOPMP_BASE_ADDR+IOPMP_MDMASK_OFF) == 0x8000000000010001);
+  TEST_ASSERT("[w/r] iopmp_mdmask value: 0x8000000000010001, ", cond_mdmask);
+  
+  //  Test record register control
+  //  Notes: The only bit that can be written is the ILLCGT
+  //  and id W1C tyo clear the interrupt
+  /*  Register format:
+    .------.--------.-------.-------.----.------.
+    | -    | ILLCGT | EXTRA | LEN   | R  | SID  |
+    :------+--------+-------+-------+----+------:
+    | bits | 31     | 30-28 | 27-15 | 14 | 13-0 |
+    '------'--------'-------'-------'----'------'
+  */
+
+  //  Test memory domain lock register
+  //  Status: validated
+  /* Register format:
+    .------.------.
+    | -    | F    |
+    :------+------:
+    | bits | 31-0 |
+    '------'------'
+  */
+
+  bool cond_mdlck = (lw(IOPMP_BASE_ADDR+IOPMP_MDLCK_OFF) == 0x8000FFFF);
+  TEST_ASSERT("[ro] iopmp_mdlck value: 0x8000FFFF, ", cond_mdlck);
+
+  //  Test memory domain config register
+  //  Status: faling when try  access MD1
+  //  Notes: in this implementation is read only 
+  /*
+      .------.----.-------.------.
+      | -    | L  | F     | T    |
+      :------+----+-------+------:
+      | bits | 31 | 30-16 | 15-0 |
+      '------'----'-------'------'
+  */
+  // test for MD0. It should assert L and put the value 8 into T. F is 0.
+  bool cond_mdcfg = (lw(IOPMP_BASE_ADDR+IOPMP_MDCFG_OFF) == 0x80000008);
+  TEST_ASSERT("[ro] iopmp_mdcfg value: 0x80000008, ", cond_mdcfg);
+  
+  // test for MD1. It should assert L and put the value 16 into T. F is 0.
+  bool cond_mdcfg_1 = (lw(IOPMP_BASE_ADDR+IOPMP_MDCFG_OFF + (uint32_t)0x4) == 0x80000010);
+  TEST_ASSERT("[ro] iopmp_mdcfg expected value: 0x80000010, ", cond_mdcfg_1);
+  
+  //  Test entry address register: 64 bits
+  //  Status: validated
+  /*  Register format:
+      .------.------. 
+      | -    | ADDR |
+      :------+------:
+      | bits | 63-0 |
+      '------'------'
+  */
+  // This loop will test all 16 entries to guaratee that all of them can be configurable.
+  bool cond_entry_addr;
+  for(uint64_t i = IOPMP_ENTRY_ADDR_OFF; i < IOPMP_ENTRY_ADDR_OFF + ((NR_ENTRIES_PER_MD*NR_MD)*8) ; i = i + 8){
+    sd(IOPMP_BASE_ADDR + i, 0x0000000000FFFFFF+i);
+    cond_entry_addr = (ld(IOPMP_BASE_ADDR+i) == 0x0000000000FFFFFF+i);
+    TEST_ASSERT("[w/r] iopmp_entry_addr value: 0x0000000000FFFFFF+i, ", cond_entry_addr);
+  }
+
+  //  Test entry configuration register
+  //  Status: faling when try access unalligned registers.
+  /* Register format:
+    .------.---.----------.-----.---.---.---.
+    | -    | L | reserved | A   | I | W | R |
+    :------+---+----------+-----+---+---+---:
+    | bits | 7 | 6-5      | 4-3 | 2 | 1 | 0 |
+    '------'---'----------'-----'---'---'---'
+  */
+ // This loop will test all 16 entries to guaratee that all of them can be configurable.
+  bool cond_entry_confg;
+  for(uint64_t i = IOPMP_ENTRY_CFG_OFF; i <= IOPMP_ENTRY_CFG_OFF + (NR_ENTRIES_PER_MD*NR_MD) ; i = i + 1){
+    sb(IOPMP_BASE_ADDR + i, 0xFF);
+    cond_entry_confg = (lb(IOPMP_BASE_ADDR+i) == 0x9F);
+    TEST_ASSERT("[w/r] iopmp_entry_cfg value: 0x9F, ", cond_entry_confg);
+  }
   TEST_END();
-
-  /* sw(IOPMP_MDMASK, 0x8000000000010001); */
-  /* bool cond_mdmask = (lw(IOPMP_MDMASK) == 0xc0000001); */
-  /* TEST_ASSERT("When iopmp_mdmask == 0, ", cond_mdmask); */
-
-  /* sw(IOPMP_ENTRY_ADDR, 0); */
-  /* bool cond_entry_addr = (lw(IOPMP_ENTRY_ADDR) == 0xc0000001); */
-  /* TEST_ASSERT("When iopmp_entry_addr == 0, ", cond_entry_addr); */
-
-  /* sw(IOPMP_ENTRY_CFG, 0x10100111); */
-  /* bool cond_entry_cfg = (lw(IOPMP_ENTRY_CFG) == 0xc0000001); */
-  /* TEST_ASSERT("When iopmp_entry_cfg == 0, ", cond_entry_cfg); */
-
-  /* sw(IOPMP_SRCMD, 1); */
-  /* bool cond_srcmd = (lw(IOPMP_SRCMD) == 0xc0000001); */
-  /* TEST_ASSERT("When iopmp_srcmd == 0, ", cond_srcmd); */
-
-  /* sw(IOPMP_RCD_OFF, ); */
-  /* sw(IOPMP_RCD_ADDR_OFF, ); */
-  /* sw(IOPMP_MDLCK_OFF, 0x7fffffff); */
-  /* sw(IOPMP_MDCFG_OFF, 0); */
 }
 
 bool check_csr_field_spec() {
