@@ -345,7 +345,7 @@ extern void hshandler_entry();
 extern void mhandler_entry();
 extern void vshandler_entry();
     
-void reset_state(){
+void reset_state_h(){
 
     goto_priv(PRIV_M);
     CSRW(mstatus, 0ULL);
@@ -400,6 +400,43 @@ void reset_state(){
     CSRS(CSR_HEDELEG, (1ULL << 8));
 
     CSRW(CSR_VSTVEC, vshandler_entry);
+
+    sfence();
+    hfence();
+}
+
+void reset_state(){
+
+    goto_priv(PRIV_M);
+    CSRW(mstatus, 0ULL);
+    //CSRW(mtvec, 0ULL);
+    CSRW(medeleg, 0ULL);
+    CSRW(mideleg, 0ULL);
+    CSRW(mip, 0ULL);
+    CSRW(mie, 0ULL);
+    //CSRW(mtime, 0ULL); 
+    //CSRW(mtimecmp, 0ULL); 
+    CSRW(mscratch, 0ULL);
+    CSRW(mepc, 0ULL);
+    CSRW(mtval, 0ULL);
+    //what about pmp register?
+    CSRW(sstatus, 0ULL);
+    //CSRW(stvec, 0ULL);
+    CSRW(sip, 0ULL);
+    CSRW(sie, 0ULL);
+    CSRW(sscratch, 0ULL);
+    CSRW(sepc, 0ULL);
+    CSRW(scause, 0ULL);
+    CSRW(stval, 0ULL);
+    CSRW(satp, 0ULL);
+
+    CSRW(mtvec, mhandler_entry);
+    CSRS(medeleg, (1ULL << 8) | (1ULL << 10));
+    // full access to physical memory to other modes
+    CSRW(pmpcfg0, 0xf);
+    CSRW(pmpaddr0, (uint64_t) -1);
+
+    CSRW(stvec, hshandler_entry);
 
     sfence();
     hfence();

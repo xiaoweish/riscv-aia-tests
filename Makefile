@@ -24,7 +24,7 @@ endif
 prev_log_file:=$(build_dir)/prev_log.mk
 -include $(prev_log_file)
 LOG_LEVEL := LOG_INFO
-GENERIC_FLAGS += -D LOG_LEVEL=$(LOG_LEVEL)
+GENERIC_FLAGS += -D LOG_LEVEL=$(LOG_LEVEL) -O0
 $(file > $(prev_log_file), PREV_LOG_LEVEL:=$(LOG_LEVEL))
 ifneq ($(PREV_LOG_LEVEL), $(LOG_LEVEL))
 pre_targets += clean_objs

@@ -4,36 +4,47 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Performance class events encoding
-#define MEM_EVENT 0x0
-#define CMT_EVENT 0x1
-#define MARCH_EVENT 0x2
-#define STORE_EVENT 9
-#define LOAD_EVENT 8
+#define IMSICM              0
+#define IMSICS              1
 
-// IOPMP global defines
-#define NR_MEMORY_DOMAINS_MAX   63
-#define NR_ENTRIES_MAX          32
+#define DELEGATE_SRC        0x400
+#define INACTIVE            0
+#define DETACHED            1
+#define EDGE1               4
+#define EDGE0               5
+#define LEVEL1              6
+#define LEVEL0              7
 
-// implementation specific
-#define NR_ENTRIES_PER_MD 8
-#define NR_MD 2
-#define NR_ENTRY_CFG_PER_REG 8
+#define CSR_MISELECT		    0x350
+#define CSR_MIREG			      0x351
+#define CSR_MTOPEI			    0x35c
 
-#define MDCFG_OFFSET         8 * (NR_MEMORY_DOMAINS_MAX)
-#define ENTRY_ADDR_OFFSET    MDCFG_OFFSET + (8 * (NR_ENTRIES_MAX))
-#define ENTRY_CFG_OFFSET     (ENTRY_ADDR_OFFSET + 8 *  (NR_ENTRIES_MAX))
+#define CSR_SISELECT			  0x150
+#define CSR_SIREG			      0x151
+#define CSR_STOPEI			    0x15c
 
-#define IOPMP_BASE_ADDR         0x50000000
-#define IOPMP_CTL_OFF           0x0                       
-#define IOPMP_RCD_OFF           0x8                       
-#define IOPMP_RCD_ADDR_OFF      0x10                      
-#define IOPMP_MDMASK_OFF        0x18                      
-#define IOPMP_MDLCK_OFF         0x20                      
-#define IOPMP_MDCFG_OFF         0x100                        
-#define IOPMP_ENTRY_ADDR_OFF    (0x108 + MDCFG_OFFSET)        
-#define IOPMP_ENTRY_CFG_OFF     (0x110 + ENTRY_ADDR_OFFSET) 
-#define IOPMP_SRCMD_OFF         (0x118 + ENTRY_CFG_OFFSET)  
+#define IMSIC_EIDELIVERY		0x70
+#define IMSIC_EITHRESHOLD		0x72
+#define IMSIC_EIP		        0x80
+#define IMSIC_EIE		        0xC0
+
+#define APLICM_ADDR         0xc000000
+#define APLICS_ADDR         0xd000000
+#define DOMAIN_OFF          0x0000
+#define SOURCECFG_OFF       0x0004
+#define APLIC_MMSICFGADDR              0x1bc0
+#define APLIC_MMSICFGADDRH             0x1bc4
+#define APLIC_SMSICFGADDR              0x1bc8
+#define APLIC_SMSICFGADDRH             0x1bcc
+#define SETIP_OFF           0x1C00
+#define SETIE_OFF           0x1E00
+#define SETIPNUM_OFF        0x1CDC
+#define SETIENUM_OFF        0x1EDC
+#define GENMSI_OFF          0x3000
+#define TARGET_OFF          0x3004
+
+#define IDC_OFF              0x4000
+#define IDELIVERY_OFF        IDC_OFF + 0x00
 
 static inline void touchread(uintptr_t addr) {
   asm volatile("" ::: "memory");
@@ -44,236 +55,144 @@ static inline void touchwrite(uintptr_t addr) {
   *(volatile uint64_t *)addr = 0xdeadbeef;
 }
 
-bool hpm_tests() {
-  uintptr_t ptr = 0x81000000;
-  TEST_START();
-  CSRW(CSR_MCOUNTINHIBIT, (uint64_t)-1);
-  CSRW(CSR_MHPMEVENT3, 0);
-  CSRW(CSR_MHPMCOUNTER3, 0);
-  // If MHPEVENT disable, MHPMCOUNTER does not increment
-  CSRW(CSR_MHPMEVENT3, CMT_EVENT | (1 << LOAD_EVENT) | (1 << STORE_EVENT));
-  touchwrite(ptr);
-  bool cond1 = (CSRR(CSR_MHPMCOUNTER3) == 0);
-  TEST_ASSERT("When mhpmevent == x, mhpmcounter increment", !cond1);
-  // If MHPEVENT enabled and MCOUNTINHIBIT disable, MHPMCOUNTER does not
-  // increment Clear counterinhibit the counter should not count
-  CSRW(CSR_MCOUNTINHIBIT, 0);
-  // Clear event triggers for counter 3
-  CSRW(CSR_MHPMEVENT3, 0);
-  // Clear counter 3
-  CSRW(CSR_MHPMCOUNTER3, 0);
-  // Execute a LOAD instruction again to show that the counter do not increment
-  CSRW(CSR_MHPMEVENT3, CMT_EVENT | (1 << LOAD_EVENT) | (1 << STORE_EVENT));
-  touchwrite(ptr);
-  // Test the consition
-  cond1 = (CSRR(CSR_MHPMCOUNTER3) == 0);
-  TEST_ASSERT("When mhpmevent == 0, mhpmcounter does not increment", cond1);
-  TEST_END();
-}
-bool iopmp_tests() {
-  TEST_START();
-  uint64_t handler = 0x0;
-  //  Test the control register (iopmp_ctl): 32 bits
-  //  Status: validated
-  /*  Register format:
-      .------.----.-------.----------.----.
-      | -    | L  | RCALL | reserved | EN |
-      :------+----+-------+----------+----:
-      | bits | 31 | 30    | 29-1     | 0  |
-      '------'----'-------'----------'----'
-  */
-  sw(IOPMP_BASE_ADDR+IOPMP_CTL_OFF, 0xffffffff);
-  bool cond_ctl = (lw(IOPMP_BASE_ADDR+IOPMP_CTL_OFF) == 0xc0000001);
-  TEST_ASSERT("[w/r] iopmp_ctl value: 0xc0000001, ", cond_ctl);
+void config_intp(uint8_t intp_id, uint32_t base_addr){
+  bool cond_ctl;
+  uint64_t hold;
 
-  //  Test the memory domain mask.
-  //  Status: validated
-  /*  Register format:
-      .------.----.------.
-      | -    | L  | MDs  |
-      :------+----+------:
-      | bits | 63 | 62-0 |
-      '------'----'------'
-  */
-  sd(IOPMP_BASE_ADDR+IOPMP_MDMASK_OFF, 0x8000000000010001);
-  bool cond_mdmask = (ld(IOPMP_BASE_ADDR+IOPMP_MDMASK_OFF) == 0x8000000000010001);
-  TEST_ASSERT("[w/r] iopmp_mdmask value: 0x8000000000010001, ", cond_mdmask);
-  
-  //  Test record register control
-  //  Notes: The only bit that can be written is the ILLCGT
-  //  and id W1C tyo clear the interrupt
-  /*  Register format:
-    .------.--------.-------.-------.----.------.
-    | -    | ILLCGT | EXTRA | LEN   | R  | SID  |
-    :------+--------+-------+-------+----+------:
-    | bits | 31     | 30-28 | 27-15 | 14 | 13-0 |
-    '------'--------'-------'-------'----'------'
-  */
+  /** Config intp source intp_id by writing sourcecfg reg */
+  sw(base_addr+(SOURCECFG_OFF+(0x4*(intp_id-1))), EDGE1);
+  /** Config intp TARGET by writing target reg */
+  // Im writing EEID to target. Only for MSI mode
+  sw(base_addr+(TARGET_OFF+(0x4*(intp_id-1))), intp_id);
 
-  //  Test memory domain lock register
-  //  Status: validated
-  /* Register format:
-    .------.------.
-    | -    | F    |
-    :------+------:
-    | bits | 31-0 |
-    '------'------'
-  */
-
-  bool cond_mdlck = (lw(IOPMP_BASE_ADDR+IOPMP_MDLCK_OFF) == 0x8000FFFF);
-  TEST_ASSERT("[ro] iopmp_mdlck value: 0x8000FFFF, ", cond_mdlck);
-
-  //  Test memory domain config register
-  //  Status: VALIDATED
-  //  Notes: in this implementation is read only 
-  /*
-      .------.----.-------.------.
-      | -    | L  | F     | T    |
-      :------+----+-------+------:
-      | bits | 31 | 30-16 | 15-0 |
-      '------'----'-------'------'
-  */
-  // test for MD0. It should assert L and put the value 8 into T. F is 0.
-  handler = lw(IOPMP_BASE_ADDR+IOPMP_MDCFG_OFF);
-  bool cond_mdcfg = (handler == 0x80000008);
-  TEST_ASSERT("[ro] iopmp_mdcfg value: 0x80000008, ", cond_mdcfg);
-  printf("Read value: 0x%llx\r\nOn address: 0x%llx\r\n", handler, IOPMP_BASE_ADDR+IOPMP_MDCFG_OFF);
-
-  // test for MD1. It should assert L and put the value 16 into T. F is 0.
-  handler = lw(IOPMP_BASE_ADDR+IOPMP_MDCFG_OFF+8);
-  cond_mdcfg = (handler == 0x80000010); //0x80000010
-  TEST_ASSERT("[ro] iopmp_mdcfg value: 0x80000010, ", cond_mdcfg);
-  printf("Read value: 0x%llx\r\nOn address: 0x%llx\r\n", handler, IOPMP_BASE_ADDR+IOPMP_MDCFG_OFF+8);
-  
-  //  Test entry address register: 64 bits
-  //  Status: validated
-  /*  Register format:
-      .------.------. 
-      | -    | ADDR |
-      :------+------:
-      | bits | 63-0 |
-      '------'------'
-  */
-  // This loop will test all 16 entries to guaratee that all of them can be configurable.
-  bool cond_entry_addr;
-  for(uint64_t i = IOPMP_ENTRY_ADDR_OFF; i < IOPMP_ENTRY_ADDR_OFF + ((NR_ENTRIES_PER_MD*NR_MD)*8) ; i = i + 8){
-    sd(IOPMP_BASE_ADDR + i, 0x0000000000FFFFFF+i);
-    cond_entry_addr = (ld(IOPMP_BASE_ADDR+i) == 0x0000000000FFFFFF+i);
-    TEST_ASSERT("[w/r] iopmp_entry_addr value: 0x0000000000FFFFFF+i, ", cond_entry_addr);
-  }
-
-  //  Test entry configuration register
-  //  Status: validated
-  /* Register format:
-    .------.---.----------.-----.---.---.---.
-    | -    | L | reserved | A   | I | W | R |
-    :------+---+----------+-----+---+---+---:
-    | bits | 7 | 6-5      | 4-3 | 2 | 1 | 0 |
-    '------'---'----------'-----'---'---'---'
-  */
- // This loop will test all 16 entries to guaratee that all of them can be configurable.
-  bool cond_entry_confg;
-  for(uint64_t i = IOPMP_ENTRY_CFG_OFF; i < IOPMP_ENTRY_CFG_OFF + (((NR_ENTRIES_PER_MD*NR_MD)/NR_ENTRY_CFG_PER_REG)*8) ; i = i + 8){
-    sw(IOPMP_BASE_ADDR + i, 0xFFFFFFFF);
-    handler = lw(IOPMP_BASE_ADDR+i);
-    cond_entry_confg = (handler == 0x9F9F9F9F);
-    TEST_ASSERT("[w/r] iopmp_entry_cfg value: 0x9F9F9F9F, ", cond_entry_confg);
-    printf("Read value: 0x%llx\r\nOn address: 0x%llx\r\n", handler, IOPMP_BASE_ADDR+i);
-  }
-
-
-  //  Test source memory domaind access: 64 bits
-  //  Status: Need more tests having in account mdmask
-  /*  Register format:
-      +------+----+------+
-      |  -   | L  |  MD  |
-      +------+----+------+
-      | bits | 63 | 62-0 |
-      +------+----+------+
-  */
-  bool cond_srcmd;
-  for(uint64_t i = IOPMP_SRCMD_OFF; i < IOPMP_SRCMD_OFF + (NR_MD*8) ; i = i + 8){
-    sd(IOPMP_BASE_ADDR + i, 0x00d0300400FFFFFF);
-    handler = ld(IOPMP_BASE_ADDR+i);
-    cond_srcmd = (handler == (0x00d0300400FFFFFF & ~(0x0000000000010001))); // 0x0000000000010001 comes from mdmask register.
-    TEST_ASSERT("[w/r] iopmp_srcmd value: 0x00d0300400FFFFFF+i, ", cond_srcmd);
-    printf("Read value: 0x%llx\r\nOn address: 0x%llx\r\n", handler, IOPMP_BASE_ADDR+i);
-  }
-
-  TEST_END();
+  /** Enable intp intp_id by writing setienum reg */
+  sw(base_addr+SETIENUM_OFF, intp_id);
 }
 
-bool check_csr_field_spec() {
+void imsic_en_intp(uint8_t intp_id, uint8_t imsic_type){
+  uint32_t prev_val = 0;
 
-  TEST_START();
-
-  /* this assumes machine mode */
-  // check_csr_wrrd("mstatus", mstatus, (uint64_t) -1, 0x800000ca007e79aaULL);
-  // check_csr_wrrd("mideleg", mideleg, (uint64_t) -1, 0x1666);
-  // check_csr_wrrd("medeleg", medeleg, (uint64_t) -1, 0xb15d);
-  check_csr_wrrd("mideleg", mideleg, (uint64_t)0, 0x444);
-  // check_csr_wrrd("mip", mip, (uint64_t) -1, 0x6e6);
-  // check_csr_wrrd("mie", mie, (uint64_t) -1, 0x1eee);
-  check_csr_wrrd("mtinst", CSR_MTINST, (uint64_t)-1, (uint64_t)-1);
-  check_csr_wrrd("mtval2", CSR_MTVAL2, (uint64_t)-1, (uint64_t)-1);
-  // check_csr_wrrd("hstatus", CSR_HSTATUS, (uint64_t) -1, 0x30053f3e0);
-  // check_csr_wrrd("hideleg", CSR_HIDELEG, (uint64_t) -1, 0x444);
-  // check_csr_wrrd("hedeleg", CSR_HEDELEG, (uint64_t) -1, 0xb1ff);
-  // check_csr_wrrd("hvip", CSR_HVIP, (uint64_t) -1, 0x444);
-  // check_csr_wrrd("hip", CSR_HIP, (uint64_t) -1, 0x4);
-  check_csr_wrrd("hie", CSR_HIE, (uint64_t)-1, 0x444);
-  check_csr_wrrd("htval", CSR_HTVAL, (uint64_t)-1, (uint64_t)-1);
-  check_csr_wrrd("htinst", CSR_HTINST, (uint64_t)-1, (uint64_t)-1);
-  // check_csr_wrrd("hgatp", CSR_HGATP, (8ULL << 60) | (1ULL << 60)-1,
-  // 0x80000000000fffffULL); check_csr_wrrd("vsstatus", CSR_VSSTATUS, (uint64_t)
-  // -1, 0x80000000000c6122ULL); check_csr_wrrd("vsip", CSR_VSIP, (uint64_t) -1,
-  // 0x0); check_csr_wrrd("vsie", CSR_VSIE, (uint64_t) -1, 0x0);
-  // check_csr_wrrd("vstvec", CSR_VSTVEC, (uint64_t) -1, 0xffffffffffffff01ULL);
-  check_csr_wrrd("vsscratch", CSR_VSSCRATCH, (uint64_t)-1, (uint64_t)-1);
-  // check_csr_wrrd("vsepc", CSR_VSEPC, (uint64_t) -1, 0xfffffffffffffffeULL);
-  // check_csr_wrrd("vscause", CSR_VSCAUSE, (uint64_t) -1,
-  // 0x800000000000001fULL);
-  check_csr_wrrd("vstval", CSR_VSTVAL, (uint64_t)-1, 0xffffffffffffffffULL);
-  // check_csr_wrrd("vsatp", CSR_VSATP, (uint64_t) -1, 0x0);
-  // check_csr_wrrd("vsatp", CSR_VSATP, (8ULL << 60) | (1ULL << 60)-1,
-  // 0x80000000000fffffULL);
-
-  TEST_END();
+  if (imsic_type == IMSICM){
+    CSRW(CSR_MISELECT, IMSIC_EIE);
+    prev_val = CSRR(CSR_MIREG);
+    CSRW(CSR_MIREG, prev_val | (1 << intp_id));
+  } else if (imsic_type == IMSICS){
+    CSRW(CSR_SISELECT, IMSIC_EIE);
+    prev_val = CSRR(CSR_SIREG);
+    CSRW(CSR_SIREG, prev_val | (1 << intp_id));
+  }
 }
 
-bool check_misa_h() {
+void aplic_trigger_intp(uint8_t intp_id, uint32_t base_addr){
+  sw(base_addr+SETIPNUM_OFF, intp_id); 
+}
 
+void aplic_genmsi(uint8_t intp_id, uint32_t base_addr){
+  /** trigger intp intp_id by writing genmsi reg */
+  sw(base_addr+GENMSI_OFF, intp_id);
+}
+
+bool imsic_intp_arrive(uint8_t intp_id, uint8_t imsic_type){
+  bool cond_ctl = false;
+
+  do
+  {
+    if (imsic_type == IMSICM){
+      cond_ctl = ((CSRR(CSR_MTOPEI) >> 16) == intp_id);    
+    }
+    else if (imsic_type == IMSICS){
+      cond_ctl = ((CSRR(CSR_STOPEI) >> 16) == intp_id);    
+    }
+  }while (cond_ctl == false);
+
+  return cond_ctl;
+}
+
+void aplic_init(){
+  /** Enable APLIC M Domain */
+  sw(APLICM_ADDR+DOMAIN_OFF, 0x1<<8);
+  sw(APLICS_ADDR+DOMAIN_OFF, 0x1<<8);
+
+  /** Enable APLIC IDC 0 */
+  sw(APLICM_ADDR+IDELIVERY_OFF, 0x1);
+  sw(APLICS_ADDR+IDELIVERY_OFF, 0x1);
+
+  sw(APLICM_ADDR+APLIC_MMSICFGADDR, 0x24000);
+  sw(APLICM_ADDR+APLIC_MMSICFGADDRH, 0x0);
+  sw(APLICM_ADDR+APLIC_SMSICFGADDR, 0x28000);
+  sw(APLICM_ADDR+APLIC_SMSICFGADDRH, 0x0);
+}
+
+void imsic_init(){
+  /** Enable interrupt delivery */
+  CSRW(CSR_MISELECT, IMSIC_EIDELIVERY);
+  CSRW(CSR_MIREG, 1);
+  CSRW(CSR_SISELECT, IMSIC_EIDELIVERY);
+  CSRW(CSR_SIREG, 1);
+
+  /** Every intp is triggrable */
+  CSRW(CSR_MISELECT, IMSIC_EITHRESHOLD);
+  CSRW(CSR_MIREG, 0);
+  CSRW(CSR_SISELECT, IMSIC_EITHRESHOLD);
+  CSRW(CSR_SIREG, 0);
+}
+
+bool irqc_test() {
   TEST_START();
+  bool cond_ctl;
+  uint64_t hold;
 
-  uint64_t misa = CSRR(misa);
-  CSRS(misa, (1ULL << 7));
+  aplic_init();
+  imsic_init();
 
-  bool hyp_ext_present = CSRR(misa) & (1ULL << 7);
-  TEST_ASSERT("check h bit after setting it", hyp_ext_present,
-              "hypervisor extensions not present");
+  /** Configure intp 7 */
+  config_intp(0x07, APLICM_ADDR);
+  /** Enable intp 7 */
+  imsic_en_intp(0x07, IMSICM);
 
-  if (!hyp_ext_present)
-    return false;
+  /** Configure intp 13 */
+  config_intp(13, APLICS_ADDR);
+  /** Enable intp 13 */
+  imsic_en_intp(13, IMSICS);
 
-  CSRC(misa, (1ULL << 7));
-  if (((CSRR(misa) & (1ULL << 7)))) {
-    VERBOSE("misa h bit is hardwired");
-  }
+  /** Configure intp 25 */
+  config_intp(25, APLICS_ADDR);
+  /** Enable intp 25 */
+  imsic_en_intp(25, IMSICS);
 
-  CSRW(misa, misa);
+  /** Trigger intp 13 by writing setipnum reg */
+  aplic_trigger_intp(13, APLICS_ADDR);  
+  /** Check if intp arraive to IMSIC */
+  cond_ctl = false;
+  cond_ctl = imsic_intp_arrive(13, IMSICS);
+  TEST_ASSERT("[w/r] s stopei value: 13, ", cond_ctl);
+  /** Clear the intp by writting to mtopei */
+  CSRW(CSR_STOPEI, 0);   
+
+  /** Trigger intp 7 by writing setipnum reg */
+  aplic_trigger_intp(0x07, APLICM_ADDR);
+  /** Check if intp arraive to IMSIC */
+  cond_ctl = false;
+  cond_ctl = imsic_intp_arrive(0x07, IMSICM);
+  TEST_ASSERT("[w/r] m mtopei value: 0x07, ", cond_ctl);
+  /** Clear the intp by writting to mtopei */
+  CSRW(CSR_MTOPEI, 0);
+
+  /** Trigger intp 25 by writing setipnum reg */
+  aplic_trigger_intp(25, APLICS_ADDR);  
+  /** Check if intp arraive to IMSIC */
+  cond_ctl = false;
+  cond_ctl = imsic_intp_arrive(25, IMSICS);
+  TEST_ASSERT("[w/r] s stopei value: 25, ", cond_ctl);
 
   TEST_END();
 }
 
 void main() {
 
-  INFO("RISC-V IOPMP read and write test.");
+  INFO("RISC-V AIA (IMSIC + APLIC + Smaia/Ssaia) test ");
 
-  if (check_misa_h()) {
-    reset_state();
-    //hpm_tests();
-    iopmp_tests();
-  }
+  irqc_test();
 
   INFO("end");
   exit(0);
