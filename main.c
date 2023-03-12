@@ -41,10 +41,13 @@
 #define SETIPNUM_OFF        0x1CDC
 #define SETIENUM_OFF        0x1EDC
 #define GENMSI_OFF          0x3000
+#define DEBUG_OFF          0x2008
 #define TARGET_OFF          0x3004
 
 #define IDC_OFF              0x4000
 #define IDELIVERY_OFF        IDC_OFF + 0x00
+
+#define DELEGATE_SRC            0x400
 
 static inline void touchread(uintptr_t addr) {
   asm volatile("" ::: "memory");
@@ -53,6 +56,9 @@ static inline void touchread(uintptr_t addr) {
 
 static inline void touchwrite(uintptr_t addr) {
   *(volatile uint64_t *)addr = 0xdeadbeef;
+}
+void deleg_intp (uint8_t intp_id){
+  sw(APLICM_ADDR+(SOURCECFG_OFF+(0x4*(intp_id-1))), DELEGATE_SRC);
 }
 
 void config_intp(uint8_t intp_id, uint32_t base_addr){
@@ -82,6 +88,10 @@ void imsic_en_intp(uint8_t intp_id, uint8_t imsic_type){
     CSRW(CSR_SIREG, prev_val | (1 << intp_id));
   }
 }
+
+// void aplic_trigger_src_intp(uint32_t val){
+//   sw(APLICM_ADDR+DEBUG_OFF, val); 
+// }
 
 void aplic_trigger_intp(uint8_t intp_id, uint32_t base_addr){
   sw(base_addr+SETIPNUM_OFF, intp_id); 
@@ -151,23 +161,29 @@ bool irqc_test() {
   imsic_en_intp(0x07, IMSICM);
 
   /** Configure intp 13 */
-  config_intp(13, APLICS_ADDR);
+  // deleg_intp(13);
+  // config_intp(13, APLICS_ADDR);
   /** Enable intp 13 */
-  imsic_en_intp(13, IMSICS);
+  // imsic_en_intp(13, IMSICS);
 
   /** Configure intp 25 */
   config_intp(25, APLICS_ADDR);
   /** Enable intp 25 */
   imsic_en_intp(25, IMSICS);
 
-  /** Trigger intp 13 by writing setipnum reg */
-  aplic_trigger_intp(13, APLICS_ADDR);  
-  /** Check if intp arraive to IMSIC */
-  cond_ctl = false;
-  cond_ctl = imsic_intp_arrive(13, IMSICS);
-  TEST_ASSERT("[w/r] s stopei value: 13, ", cond_ctl);
-  /** Clear the intp by writting to mtopei */
-  CSRW(CSR_STOPEI, 0);   
+  /** Configure intp 10 */
+  config_intp(10, APLICS_ADDR);
+  /** Enable intp 10 */
+  imsic_en_intp(10, IMSICS);
+
+  // for (int i = 0; i < 9 ; i++) {
+  //   aplic_trigger_src_intp(1<<13);  
+  //   cond_ctl = false;
+  //   cond_ctl = imsic_intp_arrive(13, IMSICS);
+  //   CSRW(CSR_STOPEI, 0);  
+  //   aplic_trigger_src_intp(0); 
+  // }
+
 
   /** Trigger intp 7 by writing setipnum reg */
   aplic_trigger_intp(0x07, APLICM_ADDR);
@@ -179,11 +195,21 @@ bool irqc_test() {
   CSRW(CSR_MTOPEI, 0);
 
   /** Trigger intp 25 by writing setipnum reg */
-  aplic_trigger_intp(25, APLICS_ADDR);  
+  aplic_genmsi(25, APLICS_ADDR);  
   /** Check if intp arraive to IMSIC */
   cond_ctl = false;
   cond_ctl = imsic_intp_arrive(25, IMSICS);
   TEST_ASSERT("[w/r] s stopei value: 25, ", cond_ctl);
+  CSRW(CSR_STOPEI, 0);   
+
+  for (int i = 0; i < 15; i++){
+    aplic_trigger_intp(10, APLICS_ADDR);  
+    cond_ctl = false;
+    cond_ctl = imsic_intp_arrive(10, IMSICS);
+    CSRW(CSR_STOPEI, 0);   
+  }
+  TEST_ASSERT("[w/r] s stopei value: 10, ", cond_ctl);
+
 
   TEST_END();
 }
