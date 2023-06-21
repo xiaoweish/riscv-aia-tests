@@ -104,11 +104,16 @@ void aplic_init(){
 }
 
 uint64_t aplic_read_topi(){
-
+  uint64_t addr = APLICS_ADDR + TOPI_OFF;
+  return *(volatile uint64_t *)addr;
 }
 
-void aplic_test(){
+bool aplic_test(){
   TEST_START();
+  
+  uint64_t topi = 0;
+  bool test_passed = false;
+
   /** enable M and S domains and enable IDC 0 in both*/
   aplic_init();
 
@@ -120,7 +125,14 @@ void aplic_test(){
   /** We now trigger interrupt 1 */
   aplic_trigger_intp(1, APLICS_ADDR);
 
-  while()
+  while((topi = aplic_read_topi()) == 0){}
+
+  if (topi == 1){
+    test_passed = true;
+  }
+
+  TEST_ASSERT("interrupt was generated and topi has value 1",  test_passed);
+
   TEST_END();
 }
 
