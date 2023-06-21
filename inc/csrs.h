@@ -2,6 +2,8 @@
 #ifndef CSRS_H
 #define CSRS_H
 
+#define CSR_MIDELEG 0x303
+
 #define CSR_MHPMCOUNTER3    0xB03
 #define CSR_MCOUNTINHIBIT   0x320
 #define CSR_MHPMEVENT3      0x323

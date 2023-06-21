@@ -345,7 +345,7 @@ extern void hshandler_entry();
 extern void mhandler_entry();
 extern void vshandler_entry();
     
-void reset_state_h(){
+void reset_state(){
 
     goto_priv(PRIV_M);
     CSRW(mstatus, 0ULL);
@@ -405,7 +405,7 @@ void reset_state_h(){
     hfence();
 }
 
-void reset_state(){
+void reset_state_nh(){
 
     goto_priv(PRIV_M);
     CSRW(mstatus, 0ULL);
