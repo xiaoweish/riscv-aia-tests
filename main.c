@@ -31,6 +31,8 @@
 #define IDC_OFF              0x4000
 #define IDELIVERY_OFF        IDC_OFF + 0x00
 #define TOPI_OFF             IDC_OFF + 0x18
+#define TOPI_PRIO_OFF        0
+#define TOPI_INTP_ID_OFF     16
 #define CLAIMI_OFF           IDC_OFF + 0x1C
 
 #define SSTATUS_SIE          (1ULL << 1)
@@ -103,15 +105,17 @@ void aplic_init(){
   sw(APLICS_ADDR+IDELIVERY_OFF, 0x1);
 }
 
-uint64_t aplic_read_topi(){
-  uint64_t addr = APLICS_ADDR + TOPI_OFF;
-  return *(volatile uint64_t *)addr;
+uint32_t aplic_read_topi(){
+  uint32_t addr = APLICS_ADDR + TOPI_OFF;
+  return *(volatile uint32_t *)addr;
 }
 
+#define INTP_ID   1
+#define INTP_PRIO 1
 bool aplic_test(){
   TEST_START();
   
-  uint64_t topi = 0;
+  uint32_t topi = 0;
   bool test_passed = false;
 
   /** enable M and S domains and enable IDC 0 in both*/
@@ -120,17 +124,18 @@ bool aplic_test(){
   /** Delegate interrupt 1 to S domain*/
   deleg_intp(1);
   /** In S domain, configure the interrupt 1 with priority 1*/
-  aplic_config_intp(1, 1, APLICS_ADDR);
+  aplic_config_intp(INTP_ID, INTP_PRIO, APLICS_ADDR);
 
   /** We now trigger interrupt 1 */
-  aplic_trigger_intp(1, APLICS_ADDR);
+  aplic_trigger_intp(INTP_ID, APLICS_ADDR);
 
   while((topi = aplic_read_topi()) == 0){}
 
-  if (topi == 1){
+  if (topi == ((INTP_ID << TOPI_INTP_ID_OFF) | (INTP_PRIO << TOPI_PRIO_OFF))){
     test_passed = true;
+  } else {
+    printf("topi = %lx\r\n", topi);
   }
-
   TEST_ASSERT("interrupt was generated and topi has value 1",  test_passed);
 
   TEST_END();
