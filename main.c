@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "idma.h"
+#include "apb_timer.h"
+
+#define APB_TIMER_RST_CMP 0x05
 
 bool check_misa_h(){
 
@@ -63,6 +66,35 @@ bool idma_single_transfer(){
   TEST_END();
 }
 
+bool timer_config_test(){
+  TEST_START();
+
+  /** Instantiate and map the timer */
+  struct apb_timer *timer_ut = (void*)APB_TIMER_BASE_ADDR;
+
+  // Initialize the timer into a well defined state
+  apb_timer_init(timer_ut);
+
+  // Configure the timer to count APB_TIMER_RST_CMP
+  apb_timer_set_compare(timer_ut, APB_TIMER_RST_CMP);
+
+  // Start the timer count
+  apb_timer_start(timer_ut);
+
+  // Wait for timer to reach compare value
+  while (apb_timer_get_timer(timer_ut) < APB_TIMER_RST_CMP);
+
+  // Stop the timer count
+  apb_timer_stop(timer_ut);
+
+  // Write to compare register to see if the timer register is being reseted
+  apb_timer_set_compare(timer_ut, APB_TIMER_RST_CMP);
+
+  TEST_ASSERT("Timer configuration", true);
+
+  TEST_END();
+}
+
 void main() {
 
   INFO("CVA6 w/ H-ext + Pulp iDMA");
@@ -70,6 +102,9 @@ void main() {
   if(check_misa_h()){
     reset_state();
   }
+
+  // apb_timer basic configuration test
+  timer_config_test();
 
   // iDMA tests
   idma_single_transfer();
