@@ -31,16 +31,16 @@ bool check_misa_h(){
   TEST_END();
 }
 
-bool idma_single_transfer(){
+bool idma_single_transfer(uint64_t idma_base_addr, size_t idma_index){
 
   TEST_START();
 
   /** Instantiate and map the DMA */
-  struct idma *dma_ut = (void*)IDMA_BASE_ADDR;
+  struct idma *dma_ut = (void*)idma_base_addr+(idma_index*PAGE_SIZE);
 
   /** set iDMA source and destiny adresses */
-  uintptr_t idma_src_addr = get_addr_base(0);
-  uintptr_t idma_dest_addr = get_addr_base(1);
+  uintptr_t idma_src_addr = get_addr_base(0+idma_index);
+  uintptr_t idma_dest_addr = get_addr_base(1+idma_index);
 
   /** Write known values to memory */
   /** Source memory position has 0xdeadbeef */
@@ -104,10 +104,14 @@ void main() {
   }
 
   // apb_timer basic configuration test
+  // Count to APB_TIMER_RST_CMP (5)
   timer_config_test();
 
   // iDMA tests
-  idma_single_transfer();
+  idma_single_transfer(IDMA_BASE_ADDR, 0);
+  idma_single_transfer(IDMA_BASE_ADDR, 1);
+  idma_single_transfer(IDMA_BASE_ADDR, 2);
+  idma_single_transfer(IDMA_BASE_ADDR, 3);
 
   INFO("end");
   exit(0);
