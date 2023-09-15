@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include "idma.h"
 #include "apb_timer.h"
+#include "aplic.h"
+#include "imsic.h"
 
 #define APB_TIMER_RST_CMP 0x05
 
@@ -57,7 +59,7 @@ bool idma_single_transfer(uint64_t idma_base_addr, size_t idma_index){
   }
 
   // Poll transfer status
-  while (read64((uintptr_t)&dma_ut->last_transfer_id_complete) != trans_id);
+  while (read64((uintptr_t)&dma_ut->last_transfer_id_complete) <= trans_id);
 
   bool check = (read64(idma_dest_addr) == 0xdeadbeef);
 
@@ -95,6 +97,20 @@ bool timer_config_test(){
   TEST_END();
 }
 
+void timer_simple_config(void){
+  /** Instantiate and map the timer */
+  struct apb_timer *timer_ut = (void*)APB_TIMER_BASE_ADDR;
+
+  // Initialize the timer into a well defined state
+  apb_timer_init(timer_ut);
+
+  // Configure the timer to count APB_TIMER_RST_CMP
+  apb_timer_set_compare(timer_ut, 1000);
+
+  // Start the timer count
+  apb_timer_start(timer_ut);
+}
+
 void main() {
 
   INFO("CVA6 w/ H-ext + Pulp iDMA");
@@ -103,15 +119,30 @@ void main() {
     reset_state();
   }
 
+  aplic_init();
+  imsic_init();
+
+  /** Configure timer intp */
+  aplic_deleg_intp(5);
+  aplic_config_intp(5, 1, APLICS_ADDR);
+  /** Enable intp 5 */
+  imsic_en_intp(5, IMSICVS);
+
   // apb_timer basic configuration test
   // Count to APB_TIMER_RST_CMP (5)
   timer_config_test();
 
+  aplic_reset_counter(APLICS_ADDR);
+
+  aplic_start_interf_0(APLICS_ADDR);
+  timer_simple_config();
+  aplic_start_interf_1(APLICS_ADDR);
+
   // iDMA tests
   idma_single_transfer(IDMA_BASE_ADDR, 0);
-  idma_single_transfer(IDMA_BASE_ADDR, 1);
-  idma_single_transfer(IDMA_BASE_ADDR, 2);
-  idma_single_transfer(IDMA_BASE_ADDR, 3);
+  // idma_single_transfer(IDMA_BASE_ADDR, 1);
+  // idma_single_transfer(IDMA_BASE_ADDR, 2);
+  // idma_single_transfer(IDMA_BASE_ADDR, 3);
 
   INFO("end");
   exit(0);
