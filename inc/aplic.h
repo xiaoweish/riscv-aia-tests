@@ -17,11 +17,10 @@
 #define GENMSI_OFF          (0x3000)
 #define DEBUG_OFF           (0x2008)
 #define TARGET_OFF          (0x3004)
-#define AIA_COUNTER_OFF     (0x2000)
-#define AIA_INTERF_OFF      (0x2004)
 
 #define IDC_OFF             (0x4000)
 #define IDELIVERY_OFF       (IDC_OFF + 0x00)
+#define CLAIMI_OFF          (IDC_OFF + 0x1C)
 
 #define DELEGATE_SRC        0x400
 #define INACTIVE            0
@@ -32,10 +31,9 @@
 #define LEVEL0              7
 
 void aplic_init();
+void aplic_idc();
+void aplic_config_intp_direct_mode(uint8_t intp_id, uint8_t prio, uint32_t base_addr);
 void aplic_config_intp(uint8_t intp_id, uint8_t guest_index, uint32_t base_addr);
 void aplic_deleg_intp (uint8_t intp_id);
-uint32_t aplic_get_counter(uint32_t base_addr);
-void aplic_reset_counter(uint32_t base_addr);
-void aplic_start_interf_0(uint32_t base_addr);
-void aplic_start_interf_1(uint32_t base_addr);
+void aplic_clr_intp(uint32_t base_addr);
 #endif
