@@ -23,7 +23,7 @@ void aplic_config_intp_direct_mode(uint8_t intp_id, uint8_t prio, uint32_t base_
   sw(base_addr+SETIENUM_OFF, intp_id);
 }
 
-void aplic_config_intp(uint8_t intp_id, uint8_t guest_index, uint32_t base_addr){
+void aplic_config_intp_msi_mode(uint8_t intp_id, uint8_t guest_index, uint32_t base_addr){
   /** Config intp source intp_id by writing sourcecfg reg */
   sw(base_addr+(SOURCECFG_OFF+(0x4*(intp_id-1))), EDGE1);
   /** Config intp TARGET by writing target reg */

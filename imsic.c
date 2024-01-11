@@ -10,20 +10,20 @@ void imsic_init(){
   CSRW(CSR_MIREG, 1);
   CSRW(CSR_SISELECT, IMSIC_EIDELIVERY);
   CSRW(CSR_SIREG, 1);
-  set_vgein(1);
-  CSRW(CSR_VSISELECT, IMSIC_EIDELIVERY);
-  CSRW(CSR_VSIREG, 1);
-  set_vgein(0);
+  // set_vgein(1);
+  // CSRW(CSR_VSISELECT, IMSIC_EIDELIVERY);
+  // CSRW(CSR_VSIREG, 1);
+  // set_vgein(0);
 
   /** Every intp is triggrable */
   CSRW(CSR_MISELECT, IMSIC_EITHRESHOLD);
   CSRW(CSR_MIREG, 0);
   CSRW(CSR_SISELECT, IMSIC_EITHRESHOLD);
   CSRW(CSR_SIREG, 0);
-  set_vgein(1);
-  CSRW(CSR_VSISELECT, IMSIC_EITHRESHOLD);
-  CSRW(CSR_VSIREG, 0);
-  set_vgein(0);
+  // set_vgein(1);
+  // CSRW(CSR_VSISELECT, IMSIC_EITHRESHOLD);
+  // CSRW(CSR_VSIREG, 0);
+  // set_vgein(0);
 }
 
 void imsic_en_intp(uint8_t intp_id, uint8_t imsic_type){
@@ -42,6 +42,19 @@ void imsic_en_intp(uint8_t intp_id, uint8_t imsic_type){
     CSRW(CSR_VSISELECT, IMSIC_EIE);
     prev_val = CSRR(CSR_VSIREG);
     CSRW(CSR_VSIREG, prev_val | (1 << intp_id));
+    set_vgein(0);
+  }
+}
+
+void imsic_clr_intp(uint8_t imsic_type) 
+{
+if (imsic_type == IMSICM){
+    CSRW(CSR_MTOPEI, 0);
+  } else if (imsic_type == IMSICS){
+    CSRW(CSR_STOPEI, 0);
+  } else if (imsic_type == IMSICVS){
+    set_vgein(1);
+    CSRW(CSR_VSTOPEI, 0);
     set_vgein(0);
   }
 }

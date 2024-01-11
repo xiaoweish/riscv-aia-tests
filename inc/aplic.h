@@ -33,7 +33,7 @@
 void aplic_init();
 void aplic_idc();
 void aplic_config_intp_direct_mode(uint8_t intp_id, uint8_t prio, uint32_t base_addr);
-void aplic_config_intp(uint8_t intp_id, uint8_t guest_index, uint32_t base_addr);
+void aplic_config_intp_msi_mode(uint8_t intp_id, uint8_t guest_index, uint32_t base_addr);
 void aplic_deleg_intp (uint8_t intp_id);
 void aplic_clr_intp(uint32_t base_addr);
 #endif

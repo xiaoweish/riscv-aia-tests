@@ -28,5 +28,6 @@
 
 void imsic_init();
 void imsic_en_intp(uint8_t intp_id, uint8_t imsic_type);
+void imsic_clr_intp(uint8_t imsic_type) ;
 
 #endif

@@ -8,6 +8,7 @@
 #include "imsic.h"
 
 #define APB_TIMER_RST_CMP 0x05
+#define APB_TIMER_IRQ 5
 
 bool check_misa_h(){
 
@@ -56,8 +57,6 @@ bool timer_config_test(){
   // Write to compare register to see if the timer register is being reseted
   apb_timer_set_compare(timer_ut, APB_TIMER_RST_CMP);
 
-  aplic_clr_intp(APLICS_ADDR);
-
   TEST_ASSERT("Timer configuration", true);
 
   TEST_END();
@@ -86,15 +85,29 @@ void main() {
   }
 
   aplic_init();
-  aplic_idc();
+  // aplic_idc();
+  imsic_init();
 
-  /** Configure timer intp */
-  aplic_deleg_intp(5);
-  aplic_config_intp_direct_mode(5, 1, APLICS_ADDR);
+  /** Configure timer intp (5)*/
+  aplic_deleg_intp(APB_TIMER_IRQ);
+  // ==============================================
+  // use this config function to test APLIC only platforms
+  // aplic_config_intp_direct_mode(APB_TIMER_IRQ, 1, APLICS_ADDR);
+  // ==============================================
+
+  // ==============================================
+  // use this to test APLIC + IMSIC platforms
+  // The configuration function assumes that the MSI ID is = to the physical intp ID
+  aplic_config_intp_msi_mode(APB_TIMER_IRQ, 0, APLICS_ADDR);
+  imsic_en_intp(APB_TIMER_IRQ, IMSICS);
+  // ==============================================
 
   // apb_timer basic configuration test
   // Count to APB_TIMER_RST_CMP (5)
   timer_config_test();
+
+  // aplic_clr_intp(APLICS_ADDR);
+  imsic_clr_intp(IMSICS);
 
   INFO("end");
   exit(0);
