@@ -27,8 +27,8 @@ void uart_init(volatile uart8250_t *uart) {
      */
     uart->lcr &= ~UART8250_LCR_DLAB;
 
-/* configure 8n1 */
-uart->lcr = UART8250_LCR_8BIT;
+    /* configure 8n1 */
+    uart->lcr = UART8250_LCR_8BIT;
 
     /* disable interrupts */
     uart->ier = 0;

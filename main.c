@@ -74,6 +74,9 @@ void config_intp(uint8_t intp_id, uint8_t guest_index, uint32_t base_addr){
   bool cond_ctl;
   uint64_t hold;
 
+  if (base_addr == APLICS_ADDR){
+    deleg_intp(intp_id);
+  }
   /** Config intp source intp_id by writing sourcecfg reg */
   sw(base_addr+(SOURCECFG_OFF+(0x4*(intp_id-1))), EDGE1);
   /** Config intp TARGET by writing target reg */
@@ -107,10 +110,6 @@ void imsic_en_intp(uint8_t intp_id, uint8_t imsic_type){
     set_vgein(0);
   }
 }
-
-// void aplic_trigger_src_intp(uint32_t val){
-//   sw(APLICM_ADDR+DEBUG_OFF, val); 
-// }
 
 void aplic_trigger_intp(uint8_t intp_id, uint32_t base_addr){
   sw(base_addr+SETIPNUM_OFF, intp_id); 
@@ -216,7 +215,7 @@ bool irqc_test() {
   /** Clear the intp by writting to mtopei */
   CSRW(CSR_MTOPEI, 0);
 
-  /** Trigger intp 25 by writing setipnum reg */
+  /** Trigger intp 25 by writing genmsi reg */
   aplic_genmsi(25, APLICS_ADDR);  
   /** Check if intp arraive to IMSIC */
   cond_ctl = false;
@@ -224,7 +223,7 @@ bool irqc_test() {
   TEST_ASSERT("[w/r] s stopei value: 25, ", cond_ctl);
   CSRW(CSR_STOPEI, 0);   
 
-  /** Test a lot of write to guarantee that the cross bar handle it*/
+  /** Test a lot of write to guarantee that the cross bar handles it*/
   for (int i = 0; i < 15; i++){
     aplic_trigger_intp(10, APLICS_ADDR);  
     cond_ctl = false;
