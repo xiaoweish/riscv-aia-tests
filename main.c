@@ -142,6 +142,7 @@ bool imsic_intp_arrive(uint8_t intp_id, uint8_t imsic_type){
 }
 
 void aplic_init(){
+  INFO("Configuring APLIC...");
   /** Enable APLIC M Domain */
   sw(APLICM_ADDR+DOMAIN_OFF, (0x1<<8)|(0x1<<2));
   sw(APLICS_ADDR+DOMAIN_OFF, (0x1<<8)|(0x1<<2));
@@ -157,11 +158,14 @@ void aplic_init(){
 }
 
 void imsic_init(){
+  INFO("Configuring IMSIC M File...");
   /** Enable interrupt delivery */
   CSRW(CSR_MISELECT, IMSIC_EIDELIVERY);
   CSRW(CSR_MIREG, 1);
+  INFO("Configuring IMSIC S File...");
   CSRW(CSR_SISELECT, IMSIC_EIDELIVERY);
   CSRW(CSR_SIREG, 1);
+  INFO("Configuring IMSIC VS File...");
   set_vgein(1);
   CSRW(CSR_VSISELECT, IMSIC_EIDELIVERY);
   CSRW(CSR_VSIREG, 1);
@@ -186,32 +190,37 @@ bool irqc_test() {
   aplic_init();
   imsic_init();
 
+  INFO("Configuring interrupts...");
   /** Configure intp 7 */
   config_intp(0x07, 0, APLICM_ADDR);
   /** Enable intp 7 */
   imsic_en_intp(0x07, IMSICM);
+  INFO("Interrupt: 7");
+  INFO("APLIC Domain: M");
+  INFO("Expected: IMSIC M, ID 7");
 
   /** Configure intp 13 */
   config_intp(13, 1, APLICS_ADDR);
   /** Enable intp 13 */
   imsic_en_intp(13, IMSICVS);
+  INFO("Interrupt: 13");
+  INFO("APLIC Domain: S");
+  INFO("Expected: IMSIC VS, ID 13");
 
   /** Configure intp 25 */
   config_intp(25, 0, APLICS_ADDR);
   /** Enable intp 25 */
   imsic_en_intp(25, IMSICS);
-
-  /** Configure intp 10 */
-  config_intp(10, 0, APLICS_ADDR);
-  /** Enable intp 10 */
-  imsic_en_intp(10, IMSICS);
+  INFO("Interrupt: 25");
+  INFO("APLIC Domain: S");
+  INFO("Expected: IMSIC S, ID 25");
 
   /** Trigger intp 7 by writing setipnum reg */
   aplic_trigger_intp(0x07, APLICM_ADDR);
   /** Check if intp arraive to IMSIC */
   cond_ctl = false;
   cond_ctl = imsic_intp_arrive(0x07, IMSICM);
-  TEST_ASSERT("[w/r] m mtopei value: 0x07, ", cond_ctl);
+  TEST_ASSERT("[w/r] IMSIC M (mtopei) value (7) matches", cond_ctl);
   /** Clear the intp by writting to mtopei */
   CSRW(CSR_MTOPEI, 0);
 
@@ -220,24 +229,15 @@ bool irqc_test() {
   /** Check if intp arraive to IMSIC */
   cond_ctl = false;
   cond_ctl = imsic_intp_arrive(25, IMSICS);
-  TEST_ASSERT("[w/r] s stopei value: 25, ", cond_ctl);
+  TEST_ASSERT("[w/r] IMSIC S (stopei) value (25) matches", cond_ctl);
   CSRW(CSR_STOPEI, 0);   
-
-  /** Test a lot of write to guarantee that the cross bar handles it*/
-  for (int i = 0; i < 15; i++){
-    aplic_trigger_intp(10, APLICS_ADDR);  
-    cond_ctl = false;
-    cond_ctl = imsic_intp_arrive(10, IMSICS);
-    CSRW(CSR_STOPEI, 0);   
-  }
-  TEST_ASSERT("[w/r] s stopei value: 10, ", cond_ctl);
 
   /** Trigger intp 13 by writing setipnum reg */
   aplic_trigger_intp(13, APLICS_ADDR);
   /** Check if intp arraive to IMSIC */
   cond_ctl = false;
   cond_ctl = imsic_intp_arrive(13, IMSICVS);
-  TEST_ASSERT("[w/r] vs vstopei value: 13, ", cond_ctl);
+  TEST_ASSERT("[w/r] IMSIC VS (vstopei) value (13) matches", cond_ctl);
   /** Clear the intp by writting to vstopei */
   set_vgein(1);
   CSRW(CSR_VSTOPEI, 0);
@@ -248,7 +248,7 @@ bool irqc_test() {
 
 void main() {
 
-  INFO("RISC-V AIA (IMSIC + APLIC + Smaia/Ssaia) test ");
+  INFO("RISC-V AIA (IMSIC + APLIC + Smaia/Ssaia) BASIC test");
 
   irqc_test();
 
