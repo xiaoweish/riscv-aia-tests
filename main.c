@@ -224,8 +224,8 @@ bool irqc_test() {
   /** Clear the intp by writting to mtopei */
   CSRW(CSR_MTOPEI, 0);
 
-  /** Trigger intp 25 by writing genmsi reg */
-  aplic_genmsi(25, APLICS_ADDR);  
+  /** Trigger intp 25 by writing setipnum reg */
+  aplic_trigger_intp(25, APLICS_ADDR);  
   /** Check if intp arraive to IMSIC */
   cond_ctl = false;
   cond_ctl = imsic_intp_arrive(25, IMSICS);
